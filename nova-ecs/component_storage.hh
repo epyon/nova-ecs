@@ -23,6 +23,12 @@ inline void raw_construct_object( void* object, Args&&... params )
 	new (object)T( std::forward<Args>( params )... );
 }
 
+template < typename T, typename ...Args >
+inline void construct_object( T* object, Args&&... params )
+{
+	new (object)T{ std::forward<Args>( params )... };
+}
+
 template < typename T >
 void raw_destroy_object( void* object )
 {
@@ -79,10 +85,6 @@ public:
 	{
 		return m_indices ? m_indices[i] : ((handle*)( m_data + m_csize * i ))->index;
 	}
-	template < typename T >
-	T* as() { return (T*)m_data; }
-	template < typename T >
-	const T* as() const { return m_data; }
 
 	void pop_back()
 	{
@@ -91,34 +93,15 @@ public:
 		m_destructor( m_data + m_size * m_csize );
 	}
 
-
 	template < typename T, typename... Args >
 	T& append( int index, Args&&... args )
 	{
 		grow();
-		T* result = (T*)m_data + sint32( m_size ) - 1;
-		construct_object<T>( result, forward<Args>( args )... );
+		T* result = (T*)m_data + m_size - 1;
+		construct_object<T>( result, std::forward<Args>( args )... );
 		if ( m_indices )
 			m_indices[ m_size - 1 ] = index;
 		return *result;
-	}
-
-	template < typename T >
-	T& back()
-	{
-		assert( m_size > 0 && "EMPTY COMPONENT STORAGE" );
-		T* result = (T*)m_data + sint32( m_size ) - 1;
-		return *result;
-	}
-
-	void* raw_add( int index )
-	{
-		grow();
-		void* result = m_data + ( m_size - 1 ) * m_csize;
-		m_constructor( result );
-		if ( m_indices )
-			m_indices[m_size - 1] = index;
-		return result;
 	}
 
 	int remove_swap( int dead_eindex )
@@ -212,13 +195,8 @@ public:
 
 	inline iterator        begin() { return (Component*)m_data; }
 	inline const_iterator  begin()  const { return (const Component*)m_data; }
-	inline void*           raw_begin() { return m_data; }
-	inline const void*     raw_begin() const { return m_data; }
-
 	inline iterator        end() { return ((Component*)m_data)+m_size; }
 	inline const_iterator  end()  const { return ( (Component*)m_data ) + m_size; }
-	inline void*           raw_end() { return ( (Component*)m_data ) + m_size; }
-	inline const void*     raw_end() const { return ( (Component*)m_data ) + m_size; }
 };
 
 template < typename Component >

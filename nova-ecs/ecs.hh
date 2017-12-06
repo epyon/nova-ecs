@@ -258,16 +258,15 @@ public:
 	{
 		component_interface* result = new component_interface;
 		result->m_relational = relational;
-		result->m_storage = new component_storage_handler< Component, handle >( relational );
+		result->m_storage = new component_storage_handler< Component >( relational );
 		result->m_index = new IndexTable( result->m_storage );
 
 		m_cstorage.push_back( result->m_storage );
-		m_cmap[thash64::create<Component>()] = result->m_storage;
+		m_cmap[&typeid(Component)] = result->m_storage;
 		m_cmap_by_name[name] = result->m_storage;
 
 		m_components.push_back( result );
-		m_component_map[thash64::create<Component>()] = result;
-		m_component_map_by_name[name] = result;
+		m_component_map[&typeid(Component)] = result;
 
 		m_cleanup.emplace_back( [=] () { delete result; } );
 	}
@@ -298,20 +297,6 @@ public:
 			c->m_index->clear();
 		}
 		m_handles.clear();
-	}
-
-	bool run_create( const std::string& component_name, handle h )
-	{
-		auto it = m_component_map_by_name.find( component_name );
-		if ( it == m_component_map_by_name.end() ) return false;
-		auto* c = it->second;
-		int i = c->m_index->insert( h );
-		assert( i == int( c->m_storage->size() ) && "Fail!" );
-
-		void* data = c->m_storage->raw_add( h.index );
-		for ( auto cf : c->m_create )
-			cf( h, data );
-		return true;
 	}
 
 	~ecs()
@@ -478,16 +463,16 @@ public:
 	template < typename Component >
 	Component* get( handle h )
 	{
-		auto it = m_component_map.find( thash64::create< Component >() );
-		NV_ASSERT( it != m_component_map.end(), "Get fail!" );
+		auto it = m_component_map.find( &typeid(Component) );
+		assert( it != m_component_map.end() && "Get fail!" );
 		return static_cast<Component*>( it->second->get_raw( h ) );
 	}
 
 	template < typename Component >
 	const Component* get( handle h ) const
 	{
-		auto it = m_component_map.find( thash64::create< Component >() );
-		NV_ASSERT( it != m_component_map.end(), "Get fail!" );
+		auto it = m_component_map.find( &typeid(Component) );
+		assert( it != m_component_map.end() && "Get fail!" );
 		return static_cast<const Component*>( it->second->get_raw( h ) );
 	}
 
@@ -495,13 +480,13 @@ public:
 	component_storage_handler< Component >*
 		get_storage()
 	{
-		return storage_cast<Component>( m_cmap[thash64::create< Component >()] );
+		return storage_cast<Component>( m_cmap[&typeid(Component)] );
 	}
 
 	template < typename Component >
 	const component_storage_handler< Component >* get_storage() const
 	{
-		return storage_cast<Component>( m_cmap[thash64::create< Component >()] );
+		return storage_cast<Component>( m_cmap[&typeid(Component)] );
 	}
 
 	template < typename Component, typename ...Args >
@@ -511,7 +496,7 @@ public:
 		auto* cs = get_storage<Component>();
 		int i = ci->m_index->insert( h );
 		assert( i == int( cs->size() ) && "Fail!" );
-		return cs->append<Component>( h.index(), std::forward<Args>( args )... );
+		return cs->append<Component>( h.index, std::forward<Args>( args )... );
 	}
 
 	template < typename Component, typename ...Args >
@@ -685,25 +670,13 @@ public:
 	template < typename Component >
 	component_interface* get_interface()
 	{
-		return m_component_map[thash64::create< Component >()];
+		return m_component_map[&typeid(Component)];
 	}
 
 	template < typename Component >
 	const component_interface* get_interface() const
 	{
-		return m_component_map[thash64::create< Component >()];
-	}
-
-	component_interface* get_interface( const std::string& name )
-	{
-		auto it = m_component_map_by_name.find( name );
-		return it != m_component_map_by_name.end() ? it->second : nullptr;
-	}
-
-	const component_interface* get_interface( std::string& name ) const
-	{
-		auto it = m_component_map_by_name.find( name );
-		return it != m_component_map_by_name.end() ? it->second : nullptr;
+		return m_component_map[&typeid(Component)];
 	}
 
 protected:
@@ -761,12 +734,11 @@ protected:
 	handle_manager                                   m_handles;
 	std::vector< handle >                            m_dead_handles;
 	std::vector< component_interface* >              m_components;
-	std::unordered_map< std::string, component_interface* > m_component_map;
-	std::unordered_map< std::string, component_interface* > m_component_map_by_name;
+	std::unordered_map< const std::type_info*, component_interface* > m_component_map;
 	std::vector< update_handler >                    m_update_handlers;
 
 	std::vector< component_storage* >                m_cstorage;
-	std::unordered_map< std::string, component_storage* >   m_cmap;
+	std::unordered_map< const std::type_info*, component_storage* >   m_cmap;
 	std::unordered_map< std::string, component_storage* >   m_cmap_by_name;
 
 	std::vector< component_interface* >              m_temp_components;
