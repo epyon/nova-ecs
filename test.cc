@@ -43,10 +43,24 @@ using msg_list = mpl::list<
 
 using game_ecs = ecs< msg_list >;
 
+struct position_system
+{
+	void update( game_ecs& ecs, position& p )
+	{
+		p.x++;
+	}
+
+	void on( const msg_action& a, position& p )
+	{
+		p.y--;
+	}
+};
+
 int main( int argc, char* argv[] )
 {
 	game_ecs e;
-	e.register_component< position >( "position" );
+	e.register_component< position >();
+	e.register_system< position_system >();
 
 	handle being = e.create();
 	e.add_component< position >( being, 3, 4 );

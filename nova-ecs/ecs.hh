@@ -14,7 +14,6 @@
 #define NV_ECS_HH
 
 #include <type_traits>
-#include <string>
 #include <typeinfo>
 #include <vector>
 #include <unordered_map>
@@ -218,11 +217,11 @@ public:
 	};
 
 	template< typename System, typename... Args >
-	System* register_system( const std::string& name, Args&&... args )
+	System* register_system( Args&&... args )
 	{
 		System* result = new System( std::forward< Args >( args )... );
 
-		this->template register_handler< System >( name, result );
+		this->template register_handler< System >( result );
 		if constexpr ( has_components< System > )
 			register_component_helper< System >( result );
 		register_ecs_messages< System >( result, message_list() );
@@ -248,7 +247,7 @@ public:
 	}
 
 	template < typename Component, typename IndexTable = flat_index_table >
-	void register_component( const std::string& name, bool relational = false )
+	void register_component( bool relational = false )
 	{
 		component_interface* result = new component_interface;
 		result->m_relational = relational;

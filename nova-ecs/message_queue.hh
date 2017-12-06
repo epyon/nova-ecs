@@ -13,7 +13,6 @@
 #ifndef NV_ECS_MESSAGE_QUEUE_HH
 #define NV_ECS_MESSAGE_QUEUE_HH
 
-#include <string>
 #include <queue>
 #include <functional>
 #include "handle.hh"
@@ -70,12 +69,12 @@ public:
 	typedef std::priority_queue< message, std::vector< message >, message_compare_type > queue_type;
 
 	template< typename Handler >
-	void register_handler( const std::string& /*name*/, Handler* c )
+	void register_handler( Handler* c )
 	{
 		register_messages< Handler > ( (Handler*)( c ), message_list{} );
 	}
 
-	void register_handler( const std::string& /*name*/, void* )
+	void register_handler( void* )
 	{
 	}
 
