@@ -20,10 +20,11 @@
 #include <unordered_map>
 #include "handle.hh"
 #include "index_table.hh"
+#include "message_queue.hh"
 #include "handle_manager.hh"
+#include "handle_tree_manager.hh"
 #include "component_storage.hh"
 
-/*
 template < typename Enumerator >
 class enumerator_provider
 {
@@ -46,19 +47,16 @@ public:
 protected:
 	iterator m_begin;
 };
-*/
 
-//template < typename MessageList >
-class ecs// : public message_queue< MessageList >
+template < typename MessageList >
+class ecs : public message_queue< MessageList >
 {
 public:
-//	typedef message_queue< MessageList, Time > base_type;
-//	typedef ecs< MessageList >   this_type;
-	typedef ecs this_type;
+	typedef ecs< MessageList >   this_type;
 
-//	using typename base_type::message_list;
-//	using typename base_type::message_type;
-//	using typename base_type::message;
+	using message_queue< MessageList >::message_list;
+	using message_queue< MessageList >::message_type;
+	using message_queue< MessageList >::message;
 
 	using destructor_handler = std::function< void() >;
 	using update_handler     = std::function< void( float ) >;
@@ -88,7 +86,6 @@ public:
 		std::vector< destroy_handler > m_destroy;
 	};
 
-	/*
 	class enumerator
 	{
 	public:
@@ -138,7 +135,6 @@ public:
 		component_interface* m_interface = nullptr;
 		Component*           m_component = nullptr;
 	};
-	*/
 
 	template < typename Component >
 	handle handle_cast( const Component& c )
@@ -226,12 +222,10 @@ public:
 	{
 		System* result = new System( std::forward< Args >( args )... );
 
-		//this->template register_handler< System >( name, result );
+		this->template register_handler< System >( name, result );
 		if constexpr ( has_components< System > )
 			register_component_helper< System >( result );
-		/*
 		register_ecs_messages< System >( result, message_list() );
-		*/
 		if constexpr (has_ecs_update< this_type, System, float >)
 			register_ecs_update< System >( result );
 		m_cleanup.emplace_back( [=] () { delete result; } );
@@ -278,7 +272,7 @@ public:
 
 	void update( float dtime )
 	{
-		//this->update_time( dtime );
+		this->update_time( dtime );
 		for ( auto u : m_update_handlers )
 			u( dtime );
 		for ( auto h : m_dead_handles )
@@ -288,7 +282,7 @@ public:
 
 	void clear()
 	{
-		//this->reset_events();
+		this->reset_events();
 		for ( auto c : m_components )
 		{
 			for ( int i = 0; i < c->m_storage->size(); ++i )
@@ -315,7 +309,6 @@ public:
 		m_cstorage.clear();
 	}
 
-	/*
 	bool attach( handle parent, handle child )
 	{
 		if ( !m_handles.attach( parent, child ) )
@@ -330,7 +323,6 @@ public:
 	{
 		m_handles.detach( handle );
 	}
-	*/
 
 
 	template< typename Component >
@@ -339,7 +331,6 @@ public:
 		return get_interface<Component>()->m_index->get( h );
 	}
 
-	/*
 	handle get_parent( handle h ) const
 	{
 		return h ? m_handles.get_parent( h ) : handle();
@@ -366,14 +357,12 @@ public:
 			current = get_parent( current );
 		};
 	}
-	*/
 
 	bool is_valid( handle h ) const
 	{
 		return m_handles.is_valid( h );
 	}
 
-	/*
 	enumerator_provider< enumerator > children( handle h ) const
 	{
 		return enumerator_provider< enumerator >( *this, first_child( h ) );
@@ -384,7 +373,7 @@ public:
 	{
 		return enumerator_provider< recursive_component_enumerator< Component > >( *this, first_child( h ) );
 	}
-	*/
+
 	template < typename C, typename F >
 	void remove_component_if( F&& f )
 	{
@@ -409,7 +398,7 @@ public:
 	void for_each( F&& f )
 	{
 		auto storage = get_storage<C>();
-		NV_ASSERT( storage, "Invalid component" );
+		assert( storage && "Invalid component" );
 		for ( auto& c : *storage )
 		{
 			f( c );
@@ -442,14 +431,12 @@ public:
 
 	void remove( handle h )
 	{
-		/*
 		handle ch = m_handles.first( h );
 		while ( handle r = ch )
 		{
 			ch = m_handles.next( ch );
 			remove( r );
 		}
-		*/
 		for ( auto c : m_components )
 			remove_component( c, h );
 		m_handles.free_handle( h );
@@ -517,7 +504,6 @@ public:
 			return add_component<Component>( h );
 		return *hc;
 	}
-	/*
 
 	template < typename System, typename Components, template <class...> class List, typename... Messages >
 	void register_component_messages( System* h, List<Messages...>&& )
@@ -596,8 +582,7 @@ public:
 	void register_ecs_component_message( System*, mpl::list< Cs...>&&, std::false_type&& ) {}
 
 	template < typename System, typename Message >
-	void register_ecs_message( System*, false_type&& ) {}
-	*/
+	void register_ecs_message( System*, std::false_type&& ) {}
 
 	template < typename System >
 	void register_ecs_update( System* s )
@@ -612,7 +597,7 @@ public:
 	void register_destroy( System* s )
 	{
 		component_interface* ci = get_interface<Component>();
-		NV_ASSERT( ci, "Unregistered component!" );
+		assert( ci && "Unregistered component!" );
 		ci->m_destroy.push_back( [=] ( void* data )
 		{
 			s->destroy( *((Component*)data) );
@@ -624,7 +609,7 @@ public:
 	void register_create( System* s )
 	{
 		component_interface* ci = get_interface<Component>();
-		NV_ASSERT( ci, "Unregistered component!" );
+		assert( ci && "Unregistered component!" );
 		ci->m_create.push_back( [=] ( H h, void* data, const lua::stack_proxy& p )
 		{
 			s->create( h, *( (Component*)data ), p );
@@ -681,7 +666,6 @@ public:
 
 protected:
 
-	/*
 	void relational_rebuild( component_interface* ci, int i )
 	{
 		handle h = *(handle*)(ci->m_storage->raw( i ));
@@ -705,7 +689,7 @@ protected:
 				relational_recursive_rebuild( ci, c );
 		}
 	}
-	*/
+
 	void call_destructors( component_interface* ci, void* data )
 	{
 		for ( auto dh : ci->m_destroy )
@@ -717,8 +701,8 @@ protected:
 		if ( i > ci->m_storage->size() ) return;
 		call_destructors( ci, ci->m_storage->raw( i ) );
 		int dead_eindex = ci->m_index->remove_swap_by_index( i );
-//		if ( ci->m_relational )
-//			relational_rebuild( ci, dead_eindex );
+		if ( ci->m_relational )
+			relational_rebuild( ci, dead_eindex );
 	}
 
 	void remove_component( component_interface* ci, handle h )
@@ -727,11 +711,11 @@ protected:
 		if ( v == nullptr ) return;
 		call_destructors( ci, v );
 		int dead_eindex = ci->m_index->remove_swap( h );
-//		if ( ci->m_relational )
-//			relational_rebuild( ci, dead_eindex );
+		if ( ci->m_relational )
+			relational_rebuild( ci, dead_eindex );
 	}
 
-	handle_manager                                   m_handles;
+	handle_tree_manager                              m_handles;
 	std::vector< handle >                            m_dead_handles;
 	std::vector< component_interface* >              m_components;
 	std::unordered_map< const std::type_info*, component_interface* > m_component_map;

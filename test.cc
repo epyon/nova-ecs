@@ -10,15 +10,48 @@ struct position
 	int y;
 };
 
+enum class msg
+{
+	ACTION,
+	UPDATE_TIME,
+	DESTROY,
+};
+
+struct msg_action
+{
+	static const int message_id = int( msg::ACTION );
+	handle entity;
+};
+
+struct msg_update_time
+{
+	static const int message_id = int( msg::UPDATE_TIME );
+	float time;
+};
+
+struct msg_destroy
+{
+	static const int message_id = int( msg::DESTROY );
+	handle entity;
+};
+
+using msg_list = mpl::list<
+	msg_action,
+	msg_update_time,
+	msg_destroy
+>;
+
+using game_ecs = ecs< msg_list >;
 
 int main( int argc, char* argv[] )
 {
-
-	ecs e;
+	game_ecs e;
 	e.register_component< position >( "position" );
 
 	handle being = e.create();
 	e.add_component< position >( being, 3, 4 );
+
+	e.dispatch< msg_action >( being );
 
 	e.update( 1.0f );
 

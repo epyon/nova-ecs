@@ -1,4 +1,4 @@
-// Copyright (C) 2016-2017 ChaosForge Ltd
+// Copyright (C) 2017-2017 ChaosForge Ltd
 // http://chaosforge.org/
 
 #ifndef NV_ECS_HANDLE_MANAGER_HH
