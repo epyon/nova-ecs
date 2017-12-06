@@ -257,8 +257,6 @@ public:
 
 		m_components.push_back( result );
 		m_component_map[&typeid(Component)] = result;
-
-		m_cleanup.emplace_back( [=] () { delete result; } );
 	}
 
 	handle create()
@@ -291,6 +289,7 @@ public:
 
 	~ecs()
 	{
+		// delete systems
 		if ( !m_cleanup.empty() )
 			for ( int i = (int)m_cleanup.size() - 1; i >= 0; --i )
 				m_cleanup[i]();
@@ -301,6 +300,7 @@ public:
 		{
 			delete ci->m_index;
 			delete ci->m_storage;
+			delete ci;
 		}
 	}
 
