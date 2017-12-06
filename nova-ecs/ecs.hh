@@ -253,11 +253,7 @@ public:
 		component_interface* result = new component_interface;
 		result->m_relational = relational;
 		result->m_storage = new component_storage_handler< Component >( relational );
-		result->m_index = new IndexTable( result->m_storage );
-
-		m_cstorage.push_back( result->m_storage );
-		m_cmap[&typeid(Component)] = result->m_storage;
-		m_cmap_by_name[name] = result->m_storage;
+		result->m_index   = new IndexTable( result->m_storage );
 
 		m_components.push_back( result );
 		m_component_map[&typeid(Component)] = result;
@@ -295,18 +291,17 @@ public:
 
 	~ecs()
 	{
-		for ( auto ci : m_components )
-			delete ci->m_index;
-
 		if ( !m_cleanup.empty() )
-		for ( int i = (int)m_cleanup.size() - 1; i >= 0; --i )
-			m_cleanup[i]();
+			for ( int i = (int)m_cleanup.size() - 1; i >= 0; --i )
+				m_cleanup[i]();
 		m_cleanup.clear();
 		m_update_handlers.clear();
 
-		for ( auto s : m_cstorage )
-			delete s;
-		m_cstorage.clear();
+		for ( auto ci : m_components )
+		{
+			delete ci->m_index;
+			delete ci->m_storage;
+		}
 	}
 
 	bool attach( handle parent, handle child )
@@ -467,13 +462,13 @@ public:
 	component_storage_handler< Component >*
 		get_storage()
 	{
-		return storage_cast<Component>( m_cmap[&typeid(Component)] );
+		return storage_cast<Component>(m_component_map[&typeid(Component)]->m_storage );
 	}
 
 	template < typename Component >
 	const component_storage_handler< Component >* get_storage() const
 	{
-		return storage_cast<Component>( m_cmap[&typeid(Component)] );
+		return storage_cast<Component>(m_component_map[&typeid(Component)]->m_storage);
 	}
 
 	template < typename Component, typename ...Args >
@@ -721,11 +716,6 @@ protected:
 	std::unordered_map< const std::type_info*, component_interface* > m_component_map;
 	std::vector< update_handler >                    m_update_handlers;
 
-	std::vector< component_storage* >                m_cstorage;
-	std::unordered_map< const std::type_info*, component_storage* >   m_cmap;
-	std::unordered_map< std::string, component_storage* >   m_cmap_by_name;
-
-	std::vector< component_interface* >              m_temp_components;
 	std::vector< destructor_handler >                m_cleanup;
 };
 

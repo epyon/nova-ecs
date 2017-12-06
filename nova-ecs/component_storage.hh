@@ -86,13 +86,6 @@ public:
 		return m_indices ? m_indices[i] : ((handle*)( m_data + m_csize * i ))->index;
 	}
 
-	void pop_back()
-	{
-		assert( m_size > 0 && "BAD OP!" );
-		m_size--;
-		m_destructor( m_data + m_size * m_csize );
-	}
-
 	template < typename T, typename... Args >
 	T& append( int index, Args&&... args )
 	{
