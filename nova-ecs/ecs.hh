@@ -57,7 +57,6 @@ public:
 	using message_queue< MessageList >::message_type;
 	using message_queue< MessageList >::message;
 
-	using destructor_handler = std::function< void() >;
 	using update_handler     = std::function< void( float ) >;
 	using destroy_handler    = std::function< void( void* ) >;
 	using create_handler     = std::function< void( handle, void* ) >;
@@ -112,7 +111,7 @@ public:
 		Component& current() { return *m_component; }
 		void next()
 		{
-			uint32 index = next_index();
+			unsigned index = next_index();
 			m_component = index >= 0 ? (Component*)m_interface->m_storage->raw( index ) : nullptr;
 		}
 
@@ -155,7 +154,7 @@ public:
 
 		bool run( handle h )
 		{
-			for ( uint32 i = 0; i < SIZE; ++i )
+			for ( unsigned i = 0; i < SIZE; ++i )
 			{
 				cmps[i] = cis[i]->get_raw( h );
 				if ( !cmps[i] ) return false;
@@ -179,7 +178,7 @@ public:
 		template < int Index, typename C, typename... Cs >
 		void fill( this_type& ecs )
 		{
-			cis[Index] = ecs.get_interface< C >();
+			cis[Index] = ecs.template get_interface< C >();
 			assert( cis[Index] && "What the f*** is this?" );
 			fill< Index + 1, Cs... >( ecs );
 		}
@@ -373,7 +372,7 @@ public:
 	{
 		auto storage = get_storage<C>();
 		auto temp_component = get_interface<C>();
-		uint32 i = 0;
+		unsigned i = 0;
 		while ( i < storage->size() )
 			if ( f( ( *storage )[i] ) )
 				remove_component_by_index( temp_component, i );
@@ -715,7 +714,7 @@ protected:
 	std::unordered_map< const std::type_info*, component_interface* > m_component_map;
 	std::vector< update_handler >                    m_update_handlers;
 
-	std::vector< destructor_handler >                m_cleanup;
+	std::vector< std::function< void() > >           m_cleanup;
 };
 
 #endif // NV_ECS_HH

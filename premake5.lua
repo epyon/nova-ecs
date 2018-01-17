@@ -31,7 +31,7 @@ workspace "nova-ecs"
 
 	filter { "system:windows", "action:vs*"}
 		defines { "_SECURE_SCL=0", "_CRT_SECURE_NO_WARNINGS=1" } 
-		buildoptions { "/std:c++latest" }
+		buildoptions { "/std:c++latest", "/permissive-" }
 		flags { "MultiProcessorCompile" }
 
 	filter {}
